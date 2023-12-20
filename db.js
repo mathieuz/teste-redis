@@ -14,12 +14,4 @@ const db = new Sequelize(process.env.NOME_BD, process.env.USUARIO, process.env.S
     }
 })
 
-db.authenticate().then(() => {
-    console.log("Conectado com sucesso!")
-
-}).catch((err) => {
-    console.log("Erro ao se conectar!\n" + err)
-
-})
-
 module.exports = db

@@ -6,47 +6,33 @@ const redis = createClient()
 const express = require("express")
 const app = express()
 
+const db = require("./db")
+
 app.use(express.json())
 
-const retornaValores = () => {
-    const tempoResponse = 5000
+app.get("/registros", async (req, res) => {
+    //Verifica se os dados estão em cache, se não, retorna null.
+    let resultado = await redis.get("registros")
 
-    //Objeto JavaScript a ser convertido em JSON.
-    const obj = [
-        {"chave1": "valor1"},
-        {"chave2": "valor2"},
-        {"chave3": "valor3"}
-    ]
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(JSON.stringify(obj)) //Manda um JSON em string
-        }, tempoResponse)
-    })
-}
-
-app.get("/teste-redis", async (req, res) => {
-    //Verifica se os valores estão em cache,
-    let resultado = await redis.get("val")
-
-    //Se existe, o valor a ser exibido é recuperado do cache.
+    //Se o resultado não for null, os dados existem.
     if (resultado) {
-        console.log("Valores recuperados do cache.")
+        console.log("Registros recuperados do cache.")
 
-    //Se não, o valor é recuperado da promise para em seguida ser armazenada em cache.
+    //Se não, os valores são recuperados do banco e armazenados em cache em seguida.
     } else {
-        console.log("Valor não existe em cache ainda. Adicionando...")
+        console.log("Os dados não estão em cache. Adicionando...")
 
-        resultado = await retornaValores()
-        await redis.set("val", resultado)
+        db.query("SELECT * FROM [dbo].[NodeRedCrudTeste];").then(async (registro) => {
+            resultado = registro[0]
+            await redis.set("registros", JSON.stringify(registro[0]))
+        })
     }
 
-    //Retorna as informações em formato JSON
     res.json(JSON.parse(resultado))
 })
 
 redis.connect().then(() => {
     app.listen(process.env.PORT, process.env.HOST, () => {
-        console.log("'localhost:43534/teste-redis'")
+        console.log("'localhost:43534/registros'")
     })
 })
