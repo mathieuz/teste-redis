@@ -10,6 +10,21 @@ const db = require("./db")
 
 app.use(express.json())
 
+//Promise SELECT MSSQL - retorna a query com os registros em 5 segundos.
+function getRegistros() {
+    
+    return new Promise(async (resolve) => {
+        await db.query(`SELECT * FROM [dbo].[NodeRedCrudTeste];`).then((registros) => {
+            let tempoRetorno = 5000
+
+            setTimeout(() => {
+                resolve(registros[0])
+            }, tempoRetorno);
+        })
+    })
+
+}
+
 app.get("/registros", async (req, res) => {
     //Verifica se os dados estão em cache, se não, retorna null.
     let resultado = await redis.get("registros")
@@ -21,18 +36,20 @@ app.get("/registros", async (req, res) => {
     //Se não, os valores são recuperados do banco e armazenados em cache em seguida.
     } else {
         console.log("Os dados não estão em cache. Adicionando...")
+        resultado = await getRegistros()
 
-        db.query("SELECT * FROM [dbo].[NodeRedCrudTeste];").then(async (registro) => {
-            resultado = registro[0]
-            await redis.set("registros", JSON.stringify(registro[0]))
-        })
+        await redis.set("registros", JSON.stringify(resultado))
     }
 
-    res.json(JSON.parse(resultado))
+    res.json(resultado)
+
 })
 
 redis.connect().then(() => {
-    app.listen(process.env.PORT, process.env.HOST, () => {
-        console.log("'localhost:43534/registros'")
+    const PORT = process.env.PORT || 10789
+    const HOST = process.env.HOST || "localhost"
+
+    app.listen(PORT, HOST, () => {
+        console.log(`${HOST}:${PORT}/registros`)
     })
 })
