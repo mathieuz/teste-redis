@@ -10,7 +10,7 @@ const db = require("./db")
 
 app.use(express.json())
 
-//Promise SELECT MSSQL - retorna a query com os registros em 5 segundos.
+//Promise SELECT MSSQL - retorna a query com os registros em uma promise em 5 segundos.
 function getRegistros() {
     
     return new Promise(async (resolve) => {
@@ -27,21 +27,28 @@ function getRegistros() {
 
 app.get("/registros", async (req, res) => {
     //Verifica se os dados estão em cache, se não, retorna null.
-    let resultado = await redis.get("registros")
+    let resultado = await redis.get("registros") //Retorna um array de objeto em string
 
     //Se o resultado não for null, os dados existem.
     if (resultado) {
         console.log("Registros recuperados do cache.")
+        resultado = JSON.parse(resultado) //Converte para um array de objeto iterável.
 
     //Se não, os valores são recuperados do banco e armazenados em cache em seguida.
     } else {
         console.log("Os dados não estão em cache. Adicionando...")
-        resultado = await getRegistros()
+        resultado = await getRegistros() //Retorna um array de objeto iterável.
 
-        await redis.set("registros", JSON.stringify(resultado))
+        await redis.set("registros", JSON.stringify(resultado)) //Insere o array de objeto em string no Redis.
     }
 
-    res.json(resultado)
+    let resultadoStr = ""
+
+    resultado.forEach((obj) => {
+        resultadoStr += `<p>ID: ${obj.id} | Nome: ${obj.nome}</p>`
+    })
+
+    res.send(resultadoStr)
 
 })
 
